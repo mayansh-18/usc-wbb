@@ -1,0 +1,113 @@
+---
+import '@fontsource/big-shoulders-display/700';
+import '@fontsource/big-shoulders-display/800';
+import '@fontsource/big-shoulders-text/500';
+import '@fontsource/big-shoulders-text/700';
+import '@fontsource/source-serif-4/400';
+import '@fontsource/source-serif-4/400-italic';
+import '@fontsource/source-serif-4/600';
+import '../styles/global.css';
+import { SITE } from '../site.config';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+const { title, description = SITE.tagline } = Astro.props;
+const pageTitle = title ? `${title} | ${SITE.name}` : SITE.name;
+const path = Astro.url.pathname;
+const nav = [
+  { href: '/', label: 'Home' },
+  { href: '/roster/', label: 'Roster' },
+  { href: '/games/', label: 'Games' },
+];
+const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="wrap masthead__inner">
+        <a class="brand" href="/">{SITE.name}</a>
+        <nav aria-label="Main">
+          {
+            nav.map((n) => (
+              <a href={n.href} aria-current={isCurrent(n.href) ? 'page' : undefined}>
+                {n.label}
+              </a>
+            ))
+          }
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="wrap footer meta">
+      <p>
+        {SITE.season} season. Written by {SITE.author}. An independent fan site, not affiliated with USC
+        Athletics.
+      </p>
+    </footer>
+  </body>
+</html>
+
+<style>
+  .masthead {
+    background: var(--cardinal);
+    border-bottom: 6px solid var(--gold);
+  }
+  .masthead__inner {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-top: 0.9rem;
+    padding-bottom: 0.8rem;
+    flex-wrap: wrap;
+  }
+  .brand {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 1.75rem;
+    color: var(--gold);
+    text-decoration: none;
+    line-height: 1;
+  }
+  nav {
+    display: flex;
+    gap: 1.4rem;
+  }
+  nav a {
+    font-family: var(--condensed);
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #fff;
+    text-decoration: none;
+    padding-bottom: 2px;
+    border-bottom: 2px solid transparent;
+  }
+  nav a:hover,
+  nav a[aria-current='page'] {
+    border-bottom-color: var(--gold);
+  }
+  main {
+    min-height: 70vh;
+  }
+  .footer {
+    margin-top: 5rem;
+    padding-top: 1.25rem;
+    padding-bottom: 2.5rem;
+    border-top: 1px solid var(--rule);
+  }
+</style>

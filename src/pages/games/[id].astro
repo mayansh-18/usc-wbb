@@ -1,0 +1,225 @@
+---
+import { render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Grade from '../../components/Grade.astro';
+import { getGames, getPlayers, getThreads, result, vsLabel, longDate, type Game } from '../../lib/data';
+
+export async function getStaticPaths() {
+  const games = await getGames();
+  return games.map((g) => ({ params: { id: g.id }, props: { game: g } }));
+}
+
+const { game } = Astro.props as { game: Game };
+const g = game.data;
+const { Content } = await render(game);
+const r = result(game);
+const players = await getPlayers();
+const threads = await getThreads();
+const byId = new Map(players.map((p) => [p.id, p]));
+const threadTitle = (id: string) => threads.find((t) => t.id === id)?.data.title ?? id;
+
+const lines = [...g.players].sort((a, b) => Number(b.starter) - Number(a.starter) || Number(a.dnp) - Number(b.dnp) || b.min - a.min);
+const where = [g.venue, g.site === 'neutral' ? 'neutral site' : null].filter(Boolean).join(', ');
+const title = `${vsLabel(game)}, ${longDate(g.date)}`;
+---
+
+<Base title={title} description={g.headline ?? title}>
+  <section class="board">
+    <div class="wrap">
+      {g.draft && <p class="draft-banner">Draft. Only visible on your laptop, not on the live site.</p>}
+      <div class="score">
+        <div class="team team--usc">
+          <span class="team__name">USC{g.uscRank ? <small> No. {g.uscRank}</small> : null}</span>
+          <span class="team__pts">{g.score?.usc ?? '–'}</span>
+        </div>
+        <div class="team">
+          <span class="team__name">{g.opponent}{g.opponentRank ? <small> No. {g.opponentRank}</small> : null}</span>
+          <span class="team__pts">{g.score?.opp ?? '–'}</span>
+        </div>
+      </div>
+      <p class="board__meta">
+        {r ? (r.win ? 'Win' : 'Loss') : 'Not played yet'}, {longDate(g.date)}{where && `, ${where}`}.
+        {g.watched && ` Watched ${g.watched}.`}
+      </p>
+    </div>
+  </section>
+
+  <div class="wrap body">
+    {g.headline && <p class="headline">{g.headline}</p>}
+    {
+      g.tags.length > 0 && (
+        <ul class="tags" aria-label="Tags">
+          {g.tags.map((t) => (
+            <li>
+              <a href={`/tags/${t}/`}>#{t}</a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+
+    <article class="prose recap">
+      <Content />
+    </article>
+
+    {
+      lines.length > 0 && (
+        <section class="grades" aria-labelledby="grades">
+          <h2 id="grades">Player by player</h2>
+          <p class="meta">Grades are against each player’s role, not against the best player on the floor.</p>
+          <ol class="grades__list">
+            {lines.map((l) => {
+              const p = byId.get(l.player);
+              return (
+                <li class="pg">
+                  <Grade grade={l.dnp ? null : l.grade} />
+                  <div>
+                    <h3>
+                      <a href={`/players/${l.player}/`}>{p?.data.name ?? l.player}</a>
+                      {p?.data.number != null && <span class="meta"> #{p.data.number}</span>}
+                      {l.starter && <span class="meta">, starter</span>}
+                    </h3>
+                    <p class="meta pg__line">
+                      {l.dnp
+                        ? 'Did not play'
+                        : `${l.min} min, ${l.pts} pts (${l.fgm}-${l.fga} FG, ${l.tpm}-${l.tpa} 3PT, ${l.ftm}-${l.fta} FT), ${l.reb} reb, ${l.ast} ast, ${l.stl} stl, ${l.blk} blk, ${l.to} TO`}
+                    </p>
+                    {l.take && <p class="pg__take">{l.take}</p>}
+                    {l.threads.length > 0 && (
+                      <ul class="pg__threads">
+                        {l.threads.map((t) => (
+                          <li>
+                            <span class={`trend trend--${t.trend}`} />
+                            <span><strong>{threadTitle(t.id)}</strong>{t.note && `: ${t.note}`}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      )
+    }
+  </div>
+</Base>
+
+<style>
+  .board {
+    background: var(--cardinal);
+    color: #fff;
+    padding: 2rem 0 1.5rem;
+  }
+  .draft-banner {
+    display: inline-block;
+    background: var(--gold);
+    color: var(--cardinal-dark);
+    font-family: var(--condensed);
+    font-weight: 700;
+    padding: 0.2rem 0.6rem;
+    border-radius: 3px;
+  }
+  .score {
+    display: grid;
+    gap: 0.25rem;
+    max-width: 32rem;
+  }
+  .team {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1.5rem;
+    font-family: var(--display);
+    font-weight: 800;
+    line-height: 1;
+  }
+  .team__name {
+    font-size: clamp(1.8rem, 5vw, 3rem);
+  }
+  .team__name small {
+    font-size: 0.5em;
+    font-weight: 700;
+    opacity: 0.8;
+  }
+  .team__pts {
+    font-size: clamp(3rem, 9vw, 5.5rem);
+    font-variant-numeric: tabular-nums;
+  }
+  .team--usc {
+    color: var(--gold);
+  }
+  .board__meta {
+    font-family: var(--condensed);
+    font-weight: 500;
+    font-size: 1.05rem;
+    margin: 1rem 0 0;
+    color: #f6dede;
+  }
+  .body {
+    padding-top: 2rem;
+  }
+  .headline {
+    font-size: 1.45rem;
+    line-height: 1.35;
+    max-width: 40ch;
+    font-weight: 600;
+  }
+  .tags {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.9rem;
+    font-family: var(--condensed);
+    font-weight: 700;
+  }
+  .recap {
+    font-size: 1.05rem;
+  }
+  .grades {
+    margin-top: 3rem;
+  }
+  .grades__list {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0 0;
+    border-top: 2px solid var(--ink);
+  }
+  .pg {
+    display: grid;
+    grid-template-columns: 3rem 1fr;
+    gap: 1rem;
+    padding: 1.1rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .pg h3 a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .pg h3 a:hover {
+    color: var(--cardinal);
+  }
+  .pg__line {
+    margin: 0.3rem 0 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .pg__take {
+    margin: 0.5rem 0 0;
+    max-width: var(--measure);
+  }
+  .pg__threads {
+    list-style: none;
+    padding: 0;
+    margin: 0.6rem 0 0;
+    display: grid;
+    gap: 0.35rem;
+  }
+  .pg__threads li {
+    display: flex;
+    gap: 0.6rem;
+    align-items: baseline;
+  }
+</style>

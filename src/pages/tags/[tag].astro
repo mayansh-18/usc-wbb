@@ -1,0 +1,38 @@
+---
+import Base from '../../layouts/Base.astro';
+import GameRow from '../../components/GameRow.astro';
+import { getGames, type Game } from '../../lib/data';
+
+export async function getStaticPaths() {
+  const games = await getGames();
+  const tags = [...new Set(games.flatMap((g) => g.data.tags))];
+  return tags.map((tag) => ({
+    params: { tag },
+    props: { tag, games: games.filter((g) => g.data.tags.includes(tag)).reverse() },
+  }));
+}
+
+const { tag, games } = Astro.props as { tag: string; games: Game[] };
+---
+
+<Base title={`#${tag}`}>
+  <div class="wrap page">
+    <h1>#{tag}</h1>
+    <p class="meta lede">{games.length} {games.length === 1 ? 'game' : 'games'} tagged {tag}. <a href="/games/">All games</a></p>
+    <div class="list">{games.map((g) => <GameRow game={g} />)}</div>
+  </div>
+</Base>
+
+<style>
+  .page {
+    padding-top: 2.5rem;
+  }
+  .lede {
+    margin-top: 0.6rem;
+  }
+  .list {
+    margin-top: 2rem;
+    border-top: 2px solid var(--ink);
+    max-width: 52rem;
+  }
+</style>

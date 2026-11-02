@@ -1,0 +1,422 @@
+---
+import Base from '../../layouts/Base.astro';
+import Grade from '../../components/Grade.astro';
+import StatLine from '../../components/StatLine.astro';
+import {
+  getPlayers, getGames, getThreads, linesFor, checkinsFor, averages, gradeAverage,
+  result, vsLabel, shortDate, one, type Player,
+} from '../../lib/data';
+
+export async function getStaticPaths() {
+  const players = await getPlayers();
+  return players.map((p) => ({ params: { id: p.id }, props: { player: p } }));
+}
+
+const { player } = Astro.props as { player: Player };
+const p = player.data;
+const dev = import.meta.env.DEV;
+
+const games = await getGames();
+const log = linesFor(player.id, games);
+const avg = averages(log.map((x) => x.line));
+const season = gradeAverage(log.map((x) => x.line));
+
+const threads = (await getThreads())
+  .filter((t) => t.data.player === player.id)
+  .map((t) => {
+    const checkins = checkinsFor(t.id, games);
+    const net = checkins.reduce((n, c) => n + (c.trend === 'better' ? 1 : c.trend === 'worse' ? -1 : 0), 0);
+    return { thread: t, checkins, net };
+  });
+const strengths = threads.filter((t) => t.thread.data.kind === 'strength');
+const workOns = threads.filter((t) => t.thread.data.kind === 'work-on');
+
+const facts = [p.position, p.height, p.class, p.hometown, p.previous].filter(Boolean);
+const newestFirst = [...log].reverse();
+const netLabel = (n: number) => (n > 0 ? `Trending up (+${n})` : n < 0 ? `Trending down (${n})` : 'Holding steady');
+---
+
+<Base title={p.name} description={`${p.name}: game log, grades and takes.`}>
+  <section class="hero">
+    <div class="wrap hero__inner">
+      <div class="jersey" aria-hidden="true">{p.number ?? '?'}</div>
+      <div class="hero__text">
+        <h1>{p.name}</h1>
+        {p.nickname ? <p class="nickname">“{p.nickname}”</p> : dev && <p class="hint">Add a nickname in src/content/players/{player.id}.yaml</p>}
+        {facts.length > 0 && <p class="meta facts">{facts.join(', ')}</p>}
+        {p.role && <p class="role">{p.role}</p>}
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap body">
+    {p.bio ? <p class="bio prose">{p.bio}</p> : dev && <p class="hint">Add your season-opening take on her as <code>bio</code>.</p>}
+
+    <section aria-labelledby="season">
+      <h2 id="season">Season so far</h2>
+      {
+        avg.gp === 0 ? (
+          <p class="muted">No games logged yet.</p>
+        ) : (
+          <div class="season">
+            <div class="table-scroll">
+              <table class="stats">
+                <thead>
+                  <tr>
+                    <th>GP</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FG%</th><th>3P%</th><th>FT%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{avg.gp}</td><td>{one(avg.min)}</td><td><strong>{one(avg.pts)}</strong></td><td>{one(avg.reb)}</td>
+                    <td>{one(avg.ast)}</td><td>{one(avg.stl)}</td><td>{one(avg.blk)}</td><td>{one(avg.to)}</td>
+                    <td>{avg.fg}</td><td>{avg.tp}</td><td>{avg.ft}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            {season && (
+              <div class="season-grade">
+                <Grade grade={season.letter} label={`Average of ${season.count} graded games`} />
+                <span class="meta">Average grade over {season.count} {season.count === 1 ? 'game' : 'games'}</span>
+              </div>
+            )}
+          </div>
+        )
+      }
+    </section>
+
+    <section class="threads" aria-labelledby="threads">
+      <h2 id="threads">What I’m tracking</h2>
+      {
+        threads.length === 0 ? (
+          <p class="muted">Nothing being tracked yet.{dev && ' Copy templates/thread.yaml into src/content/threads/ to start one.'}</p>
+        ) : (
+          <div class="threads__cols">
+            {[
+              { label: 'Strengths', items: strengths },
+              { label: 'Things to work on', items: workOns },
+            ].map((col) => (
+              <div>
+                <h3>{col.label}</h3>
+                {col.items.length === 0 && <p class="muted">None yet.</p>}
+                {col.items.map(({ thread, checkins, net }) => (
+                  <article class="thread">
+                    <header class="thread__head">
+                      <h4>{thread.data.title}</h4>
+                      {thread.data.status === 'resolved' && <span class="meta">Resolved</span>}
+                    </header>
+                    {thread.data.summary && <p class="thread__summary">{thread.data.summary}</p>}
+                    {checkins.length > 0 ? (
+                      <details>
+                        <summary>
+                          <span class="track" aria-label={`${checkins.length} check-ins`}>
+                            {checkins.map((c) => (
+                              <span class={`trend trend--${c.trend}`} title={`${shortDate(c.game.data.date)} ${vsLabel(c.game)}: ${c.trend}`} />
+                            ))}
+                          </span>
+                          <span class="meta">{netLabel(net)}</span>
+                        </summary>
+                        <ol class="checkins">
+                          {[...checkins].reverse().map((c) => (
+                            <li>
+                              <span class={`trend trend--${c.trend}`} />
+                              <span>
+                                <a class="meta" href={`/games/${c.game.id}/`}>{shortDate(c.game.data.date)} {vsLabel(c.game)}</a>
+                                {c.note && <span class="checkin-note">{c.note}</span>}
+                              </span>
+                            </li>
+                          ))}
+                        </ol>
+                      </details>
+                    ) : (
+                      <p class="meta">No check-ins yet.</p>
+                    )}
+                  </article>
+                ))}
+              </div>
+            ))}
+          </div>
+        )
+      }
+    </section>
+
+    <section aria-labelledby="log">
+      <h2 id="log">Game log</h2>
+      {log.length === 0 && <p class="muted">No games logged yet.</p>}
+      <ol class="log">
+        {
+          newestFirst.map(({ game, line }) => {
+            const r = result(game);
+            return (
+              <li>
+                <details>
+                  <summary class="log__row">
+                    <span class="meta log__date">{shortDate(game.data.date)}</span>
+                    <span class="log__opp">
+                      {vsLabel(game)}
+                      {game.data.draft && <span class="draft-tag">Draft</span>}
+                    </span>
+                    <span class={`log__res meta ${r?.win ? 'win' : r ? 'loss' : ''}`}>{r?.text ?? ''}</span>
+                    <span class="log__quick meta">
+                      {line.dnp ? 'DNP' : `${line.pts} pts, ${line.reb} reb, ${line.ast} ast`}
+                    </span>
+                    <Grade grade={line.grade} />
+                  </summary>
+                  <div class="log__detail">
+                    {line.dnp ? <p class="muted">Did not play.</p> : <StatLine line={line} />}
+                    {line.take && <p class="take">{line.take}</p>}
+                    {line.threads.length > 0 && (
+                      <ul class="checkins">
+                        {line.threads.map((t) => {
+                          const th = threads.find((x) => x.thread.id === t.id)?.thread;
+                          return (
+                            <li>
+                              <span class={`trend trend--${t.trend}`} />
+                              <span>
+                                <strong class="meta">{th?.data.title ?? t.id}</strong>
+                                {t.note && <span class="checkin-note">{t.note}</span>}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                    <a class="meta" href={`/games/${game.id}/`}>Read the game recap</a>
+                  </div>
+                </details>
+              </li>
+            );
+          })
+        }
+      </ol>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .hero {
+    background: var(--surface);
+    border-bottom: 1px solid var(--rule);
+    overflow: hidden;
+  }
+  .hero__inner {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: end;
+    gap: 0 2rem;
+    padding-top: 1.5rem;
+  }
+  /* The one loud thing: the jersey number. */
+  .jersey {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(9rem, 26vw, 17rem);
+    line-height: 0.78;
+    color: var(--cardinal);
+    -webkit-text-stroke: 0;
+    text-shadow: 0.045em 0.045em 0 var(--gold);
+    letter-spacing: -0.02em;
+    margin-bottom: -0.04em;
+  }
+  .hero__text {
+    padding-bottom: 1.6rem;
+  }
+  .nickname {
+    font-style: italic;
+    font-size: 1.5rem;
+    margin: 0.4rem 0 0.2rem;
+    color: var(--cardinal-dark);
+  }
+  .facts {
+    margin: 0.5rem 0 0;
+  }
+  .role {
+    margin: 0.35rem 0 0;
+    font-weight: 600;
+  }
+  .hint {
+    font-family: var(--condensed);
+    color: var(--muted);
+    border: 1px dashed var(--rule);
+    padding: 0.2rem 0.5rem;
+    display: inline-block;
+    margin: 0.5rem 0 0;
+  }
+  .body {
+    padding-top: 2rem;
+  }
+  .body > section {
+    margin-top: 2.75rem;
+  }
+  .bio {
+    font-size: 1.15rem;
+  }
+  .season {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 2rem;
+  }
+  .season .table-scroll {
+    flex: 1 1 32rem;
+  }
+  .season-grade {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .season-grade .grade {
+    font-size: 1.6rem;
+  }
+
+  .threads__cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+    gap: 1.5rem 2.5rem;
+  }
+  .threads h3 {
+    padding-bottom: 0.35rem;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 0.25rem;
+  }
+  .thread {
+    padding: 0.9rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .thread__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: baseline;
+  }
+  .thread h4 {
+    margin: 0;
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+  .thread__summary {
+    margin: 0.3rem 0 0.5rem;
+    color: var(--muted);
+  }
+  .thread summary {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    cursor: pointer;
+    list-style: none;
+  }
+  .thread summary::-webkit-details-marker {
+    display: none;
+  }
+  .track {
+    display: inline-flex;
+    gap: 0.3rem;
+    align-items: center;
+    padding: 0.35rem 0.5rem;
+    background: var(--board);
+    border-radius: 999px;
+  }
+  .checkins {
+    list-style: none;
+    padding: 0;
+    margin: 0.75rem 0 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+  .checkins li {
+    display: flex;
+    gap: 0.6rem;
+    align-items: baseline;
+  }
+  .checkins .trend {
+    transform: translateY(0.05rem);
+  }
+  .checkin-note {
+    display: block;
+  }
+
+  .log {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    border-top: 2px solid var(--ink);
+  }
+  .log > li {
+    border-bottom: 1px solid var(--rule);
+  }
+  .log__row {
+    display: grid;
+    grid-template-columns: 4rem minmax(0, 1fr) 5.5rem minmax(0, 11rem) 2.6rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 0.25rem;
+    cursor: pointer;
+    list-style: none;
+  }
+  .log__row::-webkit-details-marker {
+    display: none;
+  }
+  .log__row:hover {
+    background: rgba(255, 255, 255, 0.6);
+  }
+  details[open] > .log__row {
+    background: var(--surface);
+  }
+  .log__opp {
+    font-family: var(--condensed);
+    font-weight: 700;
+    font-size: 1.15rem;
+  }
+  .log__res.win {
+    color: var(--better);
+    font-weight: 700;
+  }
+  .log__res.loss {
+    color: var(--cardinal);
+    font-weight: 700;
+  }
+  .log__detail {
+    background: var(--surface);
+    padding: 0.5rem 0.75rem 1.1rem;
+  }
+  .take {
+    max-width: var(--measure);
+    margin: 0.9rem 0;
+    font-size: 1.05rem;
+  }
+  .draft-tag {
+    font-family: var(--condensed);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--cardinal-dark);
+    background: var(--gold);
+    padding: 0.05rem 0.35rem;
+    border-radius: 3px;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+  }
+
+  @media (max-width: 40rem) {
+    .hero__inner {
+      grid-template-columns: 1fr;
+    }
+    .jersey {
+      font-size: 8rem;
+      margin-bottom: 0.75rem;
+    }
+    .log__row {
+      grid-template-columns: 3.4rem minmax(0, 1fr) 2.6rem;
+    }
+    .log__res,
+    .log__quick {
+      grid-column: 2;
+    }
+    .log__row .grade {
+      grid-column: 3;
+      grid-row: 1 / span 3;
+      align-self: start;
+    }
+  }
+</style>

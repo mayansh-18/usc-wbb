@@ -1,0 +1,206 @@
+---
+import Base from '../layouts/Base.astro';
+import GameRow from '../components/GameRow.astro';
+import { getGames, getPlayers, record, result, vsLabel, longDate } from '../lib/data';
+import { SITE } from '../site.config';
+
+const games = await getGames();
+const played = games.filter((g) => g.data.score);
+const latest = played.at(-1);
+const rec = record(games);
+const recent = [...games].reverse().slice(0, 6);
+const players = (await getPlayers()).filter((p) => p.data.active);
+const r = latest ? result(latest) : null;
+---
+
+<Base>
+  <section class="intro">
+    <div class="wrap intro__inner">
+      <div>
+        <h1>{SITE.name}</h1>
+        <p class="tagline">{SITE.tagline}</p>
+      </div>
+      <p class="record" aria-label={`Record ${rec.w} and ${rec.l}`}>
+        <span class="record__num">{rec.w}–{rec.l}</span>
+        <span class="meta">{SITE.season}</span>
+      </p>
+    </div>
+  </section>
+
+  <div class="wrap body">
+    {
+      latest ? (
+        <a class="latest" href={`/games/${latest.id}/`}>
+          <span class="meta">Latest, {longDate(latest.data.date)}</span>
+          <span class="latest__score">
+            <span class={r?.win ? 'win' : 'loss'}>{r?.text}</span> {vsLabel(latest)}
+          </span>
+          {latest.data.headline && <span class="latest__headline">{latest.data.headline}</span>}
+          <span class="latest__cta">Read the recap and player grades</span>
+        </a>
+      ) : (
+        <p class="empty">No games written up yet. The first recap goes here.</p>
+      )
+    }
+
+    <div class="cols">
+      <section aria-labelledby="recent">
+        <h2 id="recent">Recent games</h2>
+        <div class="list">{recent.map((g) => <GameRow game={g} />)}</div>
+        {games.length > recent.length && <p><a href="/games/">All {games.length} games</a></p>}
+      </section>
+
+      <section aria-labelledby="players">
+        <h2 id="players">Players</h2>
+        <ul class="numbers">
+          {
+            players.map((p) => (
+              <li>
+                <a href={`/players/${p.id}/`} title={p.data.name}>
+                  <span class="n">{p.data.number ?? '–'}</span>
+                  <span class="nm">{p.data.name.split(' ').at(-1)}</span>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+        <p><a href="/roster/">Full roster</a></p>
+      </section>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .intro {
+    background: var(--surface);
+    border-bottom: 1px solid var(--rule);
+  }
+  .intro__inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 2rem;
+    flex-wrap: wrap;
+    padding-top: 2.75rem;
+    padding-bottom: 2rem;
+  }
+  .tagline {
+    font-size: 1.2rem;
+    margin: 0.75rem 0 0;
+    max-width: 36ch;
+    color: var(--muted);
+  }
+  .record {
+    margin: 0;
+    text-align: right;
+    display: grid;
+  }
+  .record__num {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(4rem, 12vw, 7.5rem);
+    line-height: 0.85;
+    color: var(--cardinal);
+    text-shadow: 0.04em 0.04em 0 var(--gold);
+    font-variant-numeric: tabular-nums;
+  }
+  .body {
+    padding-top: 2rem;
+  }
+  .latest {
+    display: grid;
+    gap: 0.3rem;
+    padding: 1.4rem 1.5rem;
+    background: var(--cardinal);
+    color: #fff;
+    text-decoration: none;
+    border-left: 8px solid var(--gold);
+    border-radius: 2px;
+    max-width: 52rem;
+  }
+  .latest .meta {
+    color: #f6dede;
+  }
+  .latest__score {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(1.8rem, 4.5vw, 2.6rem);
+    line-height: 1.05;
+  }
+  .latest__score .win,
+  .latest__score .loss {
+    color: var(--gold);
+  }
+  .latest__headline {
+    font-size: 1.15rem;
+    max-width: 50ch;
+  }
+  .latest__cta {
+    font-family: var(--condensed);
+    font-weight: 700;
+    margin-top: 0.4rem;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+  .latest:hover .latest__cta {
+    text-decoration-thickness: 2px;
+  }
+  .empty {
+    font-size: 1.15rem;
+    padding: 1.25rem 0;
+    border-top: 2px solid var(--ink);
+    border-bottom: 1px solid var(--rule);
+    max-width: 52rem;
+  }
+  .cols {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: 3rem;
+    margin-top: 3rem;
+  }
+  .list {
+    border-top: 2px solid var(--ink);
+  }
+  .numbers {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+    gap: 0.5rem;
+    border-top: 2px solid var(--ink);
+    padding-top: 1rem;
+  }
+  .numbers a {
+    display: grid;
+    justify-items: center;
+    padding: 0.5rem 0.25rem;
+    color: inherit;
+    text-decoration: none;
+    border-radius: 3px;
+  }
+  .numbers a:hover {
+    background: var(--surface);
+  }
+  .n {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 2.6rem;
+    line-height: 0.9;
+    color: var(--cardinal);
+  }
+  .nm {
+    font-family: var(--condensed);
+    font-weight: 500;
+    font-size: 0.95rem;
+    color: var(--muted);
+  }
+  @media (max-width: 48rem) {
+    .cols {
+      grid-template-columns: 1fr;
+    }
+    .record {
+      text-align: left;
+    }
+  }
+</style>

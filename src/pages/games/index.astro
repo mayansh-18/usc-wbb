@@ -1,0 +1,61 @@
+---
+import Base from '../../layouts/Base.astro';
+import GameRow from '../../components/GameRow.astro';
+import { getGames, record } from '../../lib/data';
+import { SITE } from '../../site.config';
+
+const games = (await getGames()).reverse();
+const rec = record(games);
+const tags = [...new Set(games.flatMap((g) => g.data.tags))].sort();
+---
+
+<Base title="Games">
+  <div class="wrap page">
+    <h1>Games</h1>
+    <p class="meta lede">{SITE.season}: {rec.w}–{rec.l}. Newest first.</p>
+
+    {games.length === 0 ? <p>No games written up yet.</p> : <div class="list">{games.map((g) => <GameRow game={g} />)}</div>}
+
+    {
+      tags.length > 0 && (
+        <section class="tags">
+          <h2>Browse by tag</h2>
+          <ul>
+            {tags.map((t) => (
+              <li>
+                <a href={`/tags/${t}/`}>#{t}</a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+  </div>
+</Base>
+
+<style>
+  .page {
+    padding-top: 2.5rem;
+  }
+  .lede {
+    margin-top: 0.6rem;
+  }
+  .list {
+    margin-top: 2rem;
+    border-top: 2px solid var(--ink);
+    max-width: 52rem;
+  }
+  .tags {
+    margin-top: 3rem;
+  }
+  .tags ul {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1rem;
+    font-family: var(--condensed);
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+</style>

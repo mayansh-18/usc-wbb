@@ -1,0 +1,33 @@
+---
+// Full box-score line for one player in one game.
+import type { Line } from '../lib/data';
+interface Props {
+  line: Line;
+}
+const { line: l } = Astro.props;
+---
+
+<div class="table-scroll">
+  <table class="stats">
+    <thead>
+      <tr>
+        <th>MIN</th><th>PTS</th><th>FG</th><th>3PT</th><th>FT</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>PF</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>{l.min}</td>
+        <td><strong>{l.pts}</strong></td>
+        <td>{l.fgm}-{l.fga}</td>
+        <td>{l.tpm}-{l.tpa}</td>
+        <td>{l.ftm}-{l.fta}</td>
+        <td>{l.reb}</td>
+        <td>{l.ast}</td>
+        <td>{l.stl}</td>
+        <td>{l.blk}</td>
+        <td>{l.to}</td>
+        <td>{l.pf}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

@@ -1,0 +1,188 @@
+/*
+ * Look: a coach's whiteboard in Galen. Cool board-gray paper, cardinal and
+ * gold for the program, condensed athletic type for numbers and names,
+ * a serif for your writing. The one loud thing is the jersey number.
+ */
+:root {
+  --cardinal: #990000;
+  --cardinal-dark: #6b0000;
+  --gold: #ffc72c;
+  --board: #eef1f4;
+  --surface: #ffffff;
+  --ink: #1d1d21;
+  --muted: #5b6270;
+  --rule: #cbd1d9;
+
+  --better: #17804a;
+  --same: #8a919c;
+  --worse: #d9480f;
+
+  --display: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
+  --condensed: 'Big Shoulders Text', 'Arial Narrow', sans-serif;
+  --serif: 'Source Serif 4', Georgia, serif;
+
+  --measure: 68ch;
+  --wide: 72rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 106.25%; /* 17px */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--board);
+  color: var(--ink);
+  font-family: var(--serif);
+  line-height: 1.6;
+  font-feature-settings: 'kern', 'liga';
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--display);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.005em;
+  margin: 0;
+}
+h1 {
+  font-size: clamp(2.8rem, 7vw, 5rem);
+}
+h2 {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+h3 {
+  font-size: 1.35rem;
+}
+
+p {
+  margin: 0 0 1em;
+}
+
+a {
+  color: var(--cardinal);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.wrap {
+  max-width: var(--wide);
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+.prose {
+  max-width: var(--measure);
+}
+.prose h2 {
+  font-size: 1.6rem;
+  margin: 2rem 0 0.6rem;
+  color: var(--cardinal);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.stack > * + * {
+  margin-top: var(--gap, 1rem);
+}
+
+/* Condensed text used for meta lines, nav and tables. */
+.meta {
+  font-family: var(--condensed);
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+}
+
+/* --- Stat tables --------------------------------------------------------- */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+table.stats {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: var(--condensed);
+  font-variant-numeric: tabular-nums;
+  font-size: 1rem;
+}
+table.stats th,
+table.stats td {
+  padding: 0.45rem 0.55rem;
+  text-align: right;
+  white-space: nowrap;
+}
+table.stats th {
+  font-weight: 700;
+  color: var(--muted);
+  border-bottom: 2px solid var(--ink);
+}
+table.stats td {
+  border-bottom: 1px solid var(--rule);
+}
+table.stats .l {
+  text-align: left;
+}
+
+/* --- Grade chip ------------------------------------------------------------ */
+.grade {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.4em;
+  height: 1.9em;
+  padding: 0 0.35em;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.05rem;
+  border-radius: 4px;
+  line-height: 1;
+}
+.grade--a { background: var(--cardinal); color: var(--gold); }
+.grade--b { background: #f3d6d6; color: var(--cardinal-dark); }
+.grade--c { background: #e3e6ea; color: var(--ink); }
+.grade--d,
+.grade--f { background: var(--ink); color: #fff; }
+.grade--none { background: transparent; color: var(--muted); border: 1px dashed var(--rule); }
+
+/* --- Trend marks ------------------------------------------------------------ */
+.trend {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  flex: none;
+}
+.trend--better { background: var(--better); }
+.trend--same { background: var(--same); }
+.trend--worse { background: var(--worse); border-radius: 2px; transform: rotate(45deg) scale(0.85); }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

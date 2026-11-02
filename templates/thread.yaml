@@ -1,0 +1,10 @@
+# Copy into src/content/threads/ and name it <player>-<short-topic>.yaml
+# (e.g. juju-shot-selection.yaml). The file name is the thread's id,
+# which is what you reference from a game file's `threads:` list.
+player: juju-watkins
+title: Shot selection out of ball screens
+kind: work-on          # strength | work-on
+opened: 2026-11-08
+summary: >-
+  What you're watching for and why it matters.
+status: open           # open | resolved

@@ -1,0 +1,107 @@
+---
+import Base from '../layouts/Base.astro';
+import Grade from '../components/Grade.astro';
+import { getPlayers, getGames, linesFor, averages, one } from '../lib/data';
+import { SITE } from '../site.config';
+
+const players = (await getPlayers()).filter((p) => p.data.active);
+const games = await getGames();
+const rows = players.map((p) => {
+  const log = linesFor(p.id, games);
+  const last = log.at(-1);
+  return { p, avg: averages(log.map((x) => x.line)), last };
+});
+---
+
+<Base title="Roster">
+  <div class="wrap page">
+    <h1>Roster</h1>
+    <p class="meta lede">{SITE.season}. Click a player for her game log, grades and what I’m tracking.</p>
+
+    <ul class="roster">
+      {
+        rows.map(({ p, avg, last }) => (
+          <li>
+            <a class="player" href={`/players/${p.id}/`}>
+              <span class="num" aria-hidden="true">{p.data.number ?? '–'}</span>
+              <span class="who">
+                <span class="name">{p.data.name}</span>
+                {p.data.nickname && <span class="nick">“{p.data.nickname}”</span>}
+                <span class="meta">{[p.data.position, p.data.height, p.data.class].filter(Boolean).join(', ')}</span>
+                {avg.gp > 0 && (
+                  <span class="meta line">
+                    {one(avg.pts)} pts, {one(avg.reb)} reb, {one(avg.ast)} ast in {avg.gp} {avg.gp === 1 ? 'game' : 'games'}
+                  </span>
+                )}
+              </span>
+              {last?.line.grade && (
+                <span class="last" title="Grade from her most recent game">
+                  <Grade grade={last.line.grade} />
+                </span>
+              )}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</Base>
+
+<style>
+  .page {
+    padding-top: 2.5rem;
+  }
+  .lede {
+    margin-top: 0.6rem;
+  }
+  .roster {
+    list-style: none;
+    padding: 0;
+    margin: 2rem 0 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+    column-gap: 2.5rem;
+    border-top: 2px solid var(--ink);
+  }
+  .roster li {
+    border-bottom: 1px solid var(--rule);
+  }
+  .player {
+    display: grid;
+    grid-template-columns: 5.5rem 1fr auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 0.25rem;
+    color: inherit;
+    text-decoration: none;
+  }
+  .player:hover .name {
+    color: var(--cardinal);
+  }
+  .num {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 4.2rem;
+    line-height: 0.85;
+    color: var(--cardinal);
+    text-shadow: 0.05em 0.05em 0 var(--gold);
+    text-align: right;
+  }
+  .who {
+    display: grid;
+    gap: 0.1rem;
+  }
+  .name {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 1.6rem;
+    line-height: 1.05;
+  }
+  .nick {
+    font-style: italic;
+    color: var(--cardinal-dark);
+  }
+  .line {
+    color: var(--ink);
+  }
+</style>

@@ -1,0 +1,12 @@
+---
+import { gradeTier } from '../lib/data';
+interface Props {
+  grade?: string | null;
+  label?: string;
+}
+const { grade, label } = Astro.props;
+---
+
+<span class={`grade grade--${gradeTier(grade)}`} title={label ?? (grade ? `Grade: ${grade}` : 'Not graded')}>
+  {grade ?? '–'}
+</span>
